@@ -1,9 +1,8 @@
 #ifndef _LIST_
 #define _LIST_
 
-#define Type int
 
-
+template<class Type>
 class List
 {
 
@@ -14,63 +13,176 @@ public:
 	List& operator=(const List &other);
 	~List();
 
-	void PushBack(Type &element);
-	void PushFront(Type &element);
 
-	void PopBack(Type &element);
-	void PopFront(Type &element);
+	void PushBack(const Type &element);
+	void PushFront(const Type &element);
 
-	void InsertAfter(Type &target, Type &element);
-	void RemoveAfter(Type &target);
-
+	void PopBack();
+	void PopFront();
 
 
 
 private:
 
 
-	class Box
+	struct Box
 	{
-	public:
-
-		Box(Type element, Box* next = nullptr);
-		Box& Next();
-		Type& Data();
-
-	private:
+		Box(Type data, Box* next = nullptr);
 
 		Type data;
 		Box* next;
 	};
 
+public:
+
+	class Iterator
+	{
+
+		friend List;
+
+	public:
+
+		Iterator(Box* node)
+			:node(node)
+		{}
+
+		Iterator& operator++()
+		{
+			node = node->next;
+
+			return *this;
+		}
+
+		Iterator operator++(int)
+		{
+			Iterator tmp(*this);
+
+			node = node->next;
+
+			return tmp;
+		}
+
+		Type& operator*()
+		{
+			return node->data;
+		}
+
+		Box* operator->()
+		{
+			return node;
+		}
+
+		bool operator==(const Iterator &other) const
+		{
+			return this->node == other.node;
+		}
+
+		bool operator!=(const Iterator &other) const
+		{
+			return !(*this == other);
+		}
+
+	private:
+
+		Box* node;
+
+	};
+
+
+	Iterator InsertAfter(const Iterator &target, const Type &element);
+	void RemoveAfter(const Iterator &target);
+
+	Iterator begin() const;
+	Iterator end() const;
+
+private:
+
+	void Clear();
+	void Copy(const List &other);
 
 	Box* head;
 	Box* tail;
-
-
-
-
-
 };
 
+template<class Type>
+typename List<Type>::Iterator List<Type>::begin() const
+{
+	return Iterator(head);
+}
 
+template<class Type>
+typename List<Type>::Iterator List<Type>::end() const
+{
+	return Iterator(nullptr);
+}
 
-
-List::List()
+template<class Type>
+List<Type>::List()
 {
 	head = nullptr;
 	tail = nullptr;
 }
 
-List::List(const List &other)
+template<class Type>
+List<Type>::List(const List &other)
 {
+	Copy(other);
+}
+
+template<class Type>
+List<Type>& List<Type>::operator=(const List<Type> &other)
+{
+	if (this!=&other)
+	{
+		Clear();
+		Copy(other);
+	}
+	return *this;
+}
+
+template<class Type>
+List<Type>::~List()
+{
+	Clear();
+}
+
+template<class Type>
+void List<Type>::Clear()
+{
+	if (head != nullptr)
+	{
+
+		Box* nextBox = head->next;
+		Box* currentBox = head;
+
+		while (nextBox != nullptr)
+		{
+			delete currentBox;
+			currentBox = nextBox;
+			nextBox = nextBox->next;
+		}
+		delete currentBox;
+	}
 
 }
 
-List& List::operator=(const List &other);
-List::~List();
+template<class Type>
+void List<Type>::Copy(const List<Type> &other)
+{
+	this->head = new Box(*other.head);
 
-void List::PushBack(Type &element)
+	Box* currentOtherBox = other.head;
+	Iterator currentThisBox = head;
+
+	while (currentOtherBox->next != nullptr)
+	{
+		tail = InsertAfter(currentThisBox, currentOtherBox->data).node;
+		++currentThisBox;
+	}
+}
+
+template<class Type>
+void List<Type>::PushBack(const Type &element)
 {
 	Box* temp = new Box(element);
 
@@ -82,41 +194,80 @@ void List::PushBack(Type &element)
 		return;
 	}
 
-	tail->Next() = element;
-	tail = &tail->Next();
+	tail->next = temp;
+	tail = tail->next;
 }
-void List::PushFront(Type &element)
-{
-	Box* temp = new Box(element);
 
-	temp->Next() = head;
+template<class Type>
+void List<Type>::PushFront(const Type &element)
+{
+	Box* temp = new Box(element, head);
+
 	head = temp;
 
+	if (tail == nullptr)
+		tail = temp;
+
 }
 
-void List::PopBack(Type &element);
-void List::PopFront(Type &element);
+template<class Type>
+void List<Type>::PopBack()
+{
+	if (head != nullptr)
+	{
+		Box* current = head;
 
-void List::InsertAfter(Type &target, Type &element);
-void List::RemoveAfter(Type &target);
+		while (current->next != tail &&
+				current->next != nullptr)
 
+			current = current->next;
 
+		tail = current;
+		delete current->next;
+		current->next = nullptr;
+	}
+}
 
-List::Box::Box(Type element, Box* next = nullptr)
+template<class Type>
+void List<Type>::PopFront()
+{
+	if (head != nullptr)
+	{
+		Box* target = head;
+		head = target->next;
+		delete target;
+	}
+}
+
+template<class Type>
+typename List<Type>::Iterator List<Type>::InsertAfter(const Iterator &target, const Type &element)
+{
+
+	Box* newElement = new Box(element, target.node->next);
+
+	target.node->next = newElement;
+
+	return Iterator(newElement);
+}
+
+template<class Type>
+void List<Type>::RemoveAfter(const Iterator &target)
+{
+	if (target.node !=nullptr && target.node->next != nullptr)
+	{
+		Box* tmp = target.node->next->next;
+		delete target.node->next;
+		target.node->next = tmp;
+	}
+}
+
+template<class Type>
+List<Type>::Box::Box(Type element, Box* next)
 {
 	this->data = element;
 	this->next = next;
 }
 
-List::Box& List::Box::Next()
-{
-	return *next;
-}
-
-Type& List::Box::Data()
-{
-	return data;
-}
 
 #endif // !_LIST_
 
